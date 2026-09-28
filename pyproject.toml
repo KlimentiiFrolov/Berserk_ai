@@ -1,0 +1,6 @@
+[project]
+name = "berserkai"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["bot*", "rag*", "core*"]
