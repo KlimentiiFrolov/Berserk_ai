@@ -13,8 +13,6 @@ from rag.llm.limiter import ConcurrencyLimitedLLM
 from rag.llm.ollama import OllamaClient
 from rag.llm.openai_client import OpenAIClient
 
-# Реестр провайдеров: ключ - значение LLM__PROVIDER.
-# Новый провайдер: адаптер с интерфейсом LLMClient + запись здесь + значение в LLMSettings.provider
 LLM_PROVIDERS: dict[str, Callable[[LLMSettings], LLMClient]] = {
     "ollama": OllamaClient,
     "openai": OpenAIClient,
