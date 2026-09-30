@@ -1,7 +1,5 @@
 from typing import List, Set
-import numpy as np
-import math
-import heapq
+
 
 def recall_at_k(retrieved_idxs: List[str], gold_set: Set[str], k: int = 5):
     if not gold_set:
