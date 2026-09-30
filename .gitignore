@@ -219,7 +219,12 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+docs/
+CONTEXT.md
+
 # Артефакты рантайма (создаются RAGSettings.ensure_directories)
 models/
 logs/
 data/
+
+
