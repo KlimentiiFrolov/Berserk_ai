@@ -1,6 +1,5 @@
 import asyncio
 from collections.abc import Sequence
-from logging import Logger
 from typing import List
 
 from fastembed import SparseTextEmbedding, TextEmbedding
@@ -8,9 +7,10 @@ from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import AsyncQdrantClient, models
 
 from core.config import MODELS_DIR, Settings, get_settings
+from core.logger import prepare_logger
 from rag.schemas import Chunk, RetrievedChunk
 
-logger = Logger(__name__)
+logger = prepare_logger(__name__, get_settings().log)
 
 
 class Retriever:
@@ -19,7 +19,7 @@ class Retriever:
         settings: Settings | None = None
     ) -> None:
         self.settings = settings or get_settings()
-        logger.debug(f"Модели будут сохранены в {MODELS_DIR}")
+        logger.debug("Модели будут сохранены в %s", MODELS_DIR)
         self.client = AsyncQdrantClient(
             url=self.settings.qdrant.url,
             api_key=self.settings.qdrant.api_key.get_secret_value() or None,
