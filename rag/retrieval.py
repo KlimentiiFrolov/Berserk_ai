@@ -1,15 +1,14 @@
-from collections.abc import Sequence
-from typing import List
 import asyncio
+from collections.abc import Sequence
+from logging import Logger
+from typing import List
 
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import AsyncQdrantClient, models
 
-from core.config import RAGSettings, get_rag_settings
-from rag.schemas import RetrievedChunk, Chunk
-
-from logging import Logger
+from core.config import MODELS_DIR, Settings, get_settings
+from rag.schemas import Chunk, RetrievedChunk
 
 logger = Logger(__name__)
 
@@ -17,25 +16,28 @@ logger = Logger(__name__)
 class Retriever:
     def __init__(
         self,
-        settings: RAGSettings | None = None
+        settings: Settings | None = None
     ) -> None:
-        self.settings = settings or get_rag_settings()
-        logger.debug(f"Модели будут сохранены в {self.settings.models_cache_dir}")
-        self.client = AsyncQdrantClient(url=self.settings.qdrant_url)
+        self.settings = settings or get_settings()
+        logger.debug(f"Модели будут сохранены в {MODELS_DIR}")
+        self.client = AsyncQdrantClient(
+            url=self.settings.qdrant.url,
+            api_key=self.settings.qdrant.api_key.get_secret_value() or None,
+        )
         self.dense_embedder = TextEmbedding(
-            model_name=self.settings.dense_model_name,
-            cache_dir=str(self.settings.models_cache_dir),
+            model_name=self.settings.models.dense,
+            cache_dir=str(MODELS_DIR),
         )
         self.sparse_embedder = SparseTextEmbedding(
-            model_name=self.settings.sparse_model_name,
-            cache_dir=str(self.settings.models_cache_dir),
+            model_name=self.settings.models.sparse,
+            cache_dir=str(MODELS_DIR),
         )
         self.reranker = TextCrossEncoder(
-            model_name=self.settings.rerank_model_name,
-            cache_dir=str(self.settings.models_cache_dir),
+            model_name=self.settings.models.rerank,
+            cache_dir=str(MODELS_DIR),
         )
         self.router = None
-        self.collection_names = ["cards", "rules", "faq", "community"]
+        self.collection_names = self.settings.qdrant.collections
 
     async def close(self) -> None:
         await self.client.close()
