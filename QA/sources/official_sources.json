@@ -1,0 +1,193 @@
+{
+  "version": "1.0",
+  "snapshot_date": "2026-10-03",
+  "sources": [
+    {
+      "source_id": "SRC-001",
+      "name": "Официальные базовые правила ККИ «Берсерк»",
+      "source_type": "official_site_rules",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Нет",
+      "url": "https://berserk.ru/pravila-igri",
+      "scope": "Базовые правила, подготовка, поле, движение, атаки, дальность, победа",
+      "notes": "Основной стабильный источник для вопросов по базовым правилам."
+    },
+    {
+      "source_id": "SRC-002",
+      "name": "Официальный глоссарий ККИ «Берсерк»",
+      "source_type": "official_site_glossary",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Нет",
+      "url": "https://berserk.ru/glossary",
+      "scope": "Определения игровых терминов и механик",
+      "notes": "Основной источник для механик и терминологии."
+    },
+    {
+      "source_id": "SRC-003",
+      "name": "Официальная турнирная страница ККИ «Берсерк»",
+      "source_type": "official_site_tournament",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/company/tournament",
+      "scope": "Констрактед, лимитед, Стандарт, релизные турниры, ОТЦ",
+      "notes": "Для динамических сведений всегда учитывать дату снимка."
+    },
+    {
+      "source_id": "SRC-004",
+      "name": "Официальный сайт ККИ «Берсерк»",
+      "source_type": "official_site",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/",
+      "scope": "Новости, база карт, ссылки на официальные ресурсы",
+      "notes": "Правообладатель/разработчик на сайте указан как «Мир Хобби»."
+    },
+    {
+      "source_id": "SRC-005",
+      "name": "Официальная группа ККИ «Берсерк» во ВКонтакте",
+      "source_type": "official_social_vk",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Да",
+      "url": "https://vk.com/berserk_tcg",
+      "scope": "Полные правила, официальные объявления, материалы и документы",
+      "notes": "Ссылка на группу дана с официального сайта. Использовать как приоритетный канал для актуальных документов."
+    },
+    {
+      "source_id": "SRC-006",
+      "name": "Официальный Telegram издательства Hobby World",
+      "source_type": "official_social_telegram",
+      "authority_tier": 2,
+      "official": "Да",
+      "temporal": "Да",
+      "url": "https://t.me/hobbyworld_news",
+      "scope": "Новости издательства и релизы, включая ККИ «Берсерк»",
+      "notes": "Вспомогательный источник; не использовать вместо правил для спорных игровых трактовок."
+    },
+    {
+      "source_id": "SRC-007",
+      "name": "Официальный Telegram сети Hobby Games",
+      "source_type": "official_social_telegram",
+      "authority_tier": 2,
+      "official": "Да",
+      "temporal": "Да",
+      "url": "https://t.me/hobby_games",
+      "scope": "Новости, релизы, мероприятия, публикации о «Берсерке»",
+      "notes": "Вспомогательный источник; полезен для актуальных анонсов и событий."
+    },
+    {
+      "source_id": "CARD-001",
+      "name": "Официальная карточка: Дхайа",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=98852&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Нашествие тьмы»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-002",
+      "name": "Официальная карточка: Лёгкая кавалерия",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=100509&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Призрачный легион»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-003",
+      "name": "Официальная карточка: Древний огр",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=98399&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Война стихий»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-004",
+      "name": "Официальная карточка: Викарий",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=101085&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Гибель богов»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-005",
+      "name": "Официальная карточка: Жрец штормов",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=98847&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Нашествие тьмы»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-006",
+      "name": "Официальная карточка: Землекоп",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=98815&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Нашествие тьмы»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-007",
+      "name": "Официальная карточка: Древляна",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=100980&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Гибель богов»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-008",
+      "name": "Официальная карточка: Азенаэль",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=101091&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Гибель богов»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-009",
+      "name": "Официальная карточка: Мастер разума",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=98846&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Нашествие тьмы»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    },
+    {
+      "source_id": "CARD-010",
+      "name": "Официальная карточка: Кицунэ",
+      "source_type": "official_card_database",
+      "authority_tier": 1,
+      "official": "Да",
+      "temporal": "Частично",
+      "url": "https://berserk.ru/?card_id=100969&route=card%2Fcard",
+      "scope": "Характеристики, текст карты и FAQ; выпуск «Гибель богов»",
+      "notes": "Карточечный FAQ/эррата считается приоритетным для вопросов по конкретной карте."
+    }
+  ]
+}
