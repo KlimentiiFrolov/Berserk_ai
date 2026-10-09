@@ -1,14 +1,29 @@
+from typing import Literal, TypedDict
 from string import Template
 from evaluate import load
 
-prompt_template = Template("""Ты - эксперт‑фактчекер. Твоя задача: сравнить ответ модели с эталонным ответом и оценить фактическую точность.
+from rag.llm import LLMClient, LLMResponse, Message
+
+JUDGE_SYSTEM_PROMPT = (
+    "Ты - эксперт-фактчекер. Твоя задача: сравнить ответ модели "
+    "с эталонным ответом и оценить фактическую точность."
+)
+
+JUDGE_USER_TEMPLATE = Template("""\
 Вопрос пользователя:
 <question>
+${question}
+</question>
+
 Эталонный ответ:
 <reference>
+${reference}
+</reference>
 
 Ответ модели:
 <answer>
+${answer}
+</answer>
 
 Критерии проверки:
 - Все факты должны совпадать с эталоном.
@@ -22,25 +37,59 @@ prompt_template = Template("""Ты - эксперт‑фактчекер. Тво
 4. Дай итоговую оценку точности по шкале 0-100.
 5. Кратко напиши, можно ли доверять ответу без ручной проверки.
 """)
+
 class LLM_as_a_judge:
-    def __init__(self, llm):
+    def __init__(self, llm: LLMClient) -> None:
         self.llm = llm
 
-    def evaluate(self, question, answer, reference):
-        prompt = prompt_template.substitute(question=question, reference=reference, answer=answer)
-        response = self.llm.generate(prompt)
-        return response
+    async def evaluate(
+        self,
+        question: str,
+        answer: str,
+        reference: str,
+    ) -> str:
+        user_prompt = JUDGE_USER_TEMPLATE.substitute(
+            question=question,
+            reference=reference,
+            answer=answer,
+        )
+        messages = [
+            Message(role="system", content=JUDGE_SYSTEM_PROMPT),
+            Message(role="user", content=user_prompt),
+        ]
+
+        response: LLMResponse = await self.llm.generate(messages)
+        return response.text
     
     
+class BertScoreExample(TypedDict):
+    precision: float
+    recall: float
+    f1: float
+
+class BertScoreResult(TypedDict):
+    precision: float
+    recall: float
+    f1: float
+    per_example: list[BertScoreExample]
 
 class BertScore:
-    def __init__(self, lang="en", model_type=None, device="cuda"):
+    def __init__(
+        self,
+        lang: Literal["ru", "en"] = "en",
+        model_type: str = "microsoft/deberta-xlarge-mnli",
+        device: Literal["cuda", "cpu"] = "cuda",
+    ) -> None:
         self.metric = load("bertscore")
         self.lang = lang
-        self.model_type = model_type  # например, "microsoft/deberta-xlarge-mnli"
+        self.model_type = model_type
         self.device = device
 
-    def evaluate(self, answer: list[str] | str, reference: list[str] | str):
+    def evaluate(
+        self,
+        answer: list[str] | str,
+        reference: list[str] | str,
+    ) -> BertScoreResult:
         if isinstance(answer, str):
             answer = [answer]
         if isinstance(reference, str):
@@ -63,11 +112,11 @@ class BertScore:
             "recall": results["recall"].mean().item(),
             "f1": results["f1"].mean().item(),
             "per_example": [
-                {
-                    "precision": p,
-                    "recall": r,
-                    "f1": f,
-                }
-                for p, r, f in zip(results["precision"], results["recall"], results["f1"])
+                {"precision": p, "recall": r, "f1": f}
+                for p, r, f in zip(
+                    results["precision"],
+                    results["recall"],
+                    results["f1"],
+                )
             ],
         }
