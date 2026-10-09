@@ -100,6 +100,7 @@ class Retriever:
         dense_vec, sparse_vec = await asyncio.gather(
                     self._embed_dense([query]),
                     self._embed_sparse([query]))
+        
         dense_vec, sparse_vec = dense_vec[0], sparse_vec[0]
         
         tasks = [self.client.query_points(
@@ -115,10 +116,14 @@ class Retriever:
                 limit=rrf_limit,
             ) for collection_name in collections]
         
-        results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
         
         total_chunks = []
         for collection_name, result in zip(collections, results):
+            if isinstance(result, BaseException):
+                logger.warning("Коллекция %s недоступна: %s", collection_name, result)
+                continue
+            
             chunks = [RetrievedChunk(
                         chunk=Chunk(
                                 id=point.payload.get('id', ''),

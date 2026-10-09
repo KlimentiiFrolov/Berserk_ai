@@ -153,6 +153,7 @@ activemq-data/
 .env
 .envrc
 .venv
+.venv/
 env/
 venv/
 ENV/
@@ -226,5 +227,4 @@ CONTEXT.md
 models/
 logs/
 data/
-
-
+qdrant_store/
