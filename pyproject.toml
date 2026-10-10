@@ -12,11 +12,15 @@ dependencies = [
     "openai>=1.40",
     "aiogram>=3.13",
     "ollama>=0.4",
+    "gradio>=6",
 ]
 
 [project.optional-dependencies]
 eval = [
     "numpy>=1.26",
+    "pandas>=2.2",
+    "datasets>=3.0",
+    "evaluate>=0.4",
 ]
 
 [dependency-groups]
@@ -24,6 +28,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "ruff>=0.6",
+    "ipykernel>=6.29",
 ]
 
 [build-system]
