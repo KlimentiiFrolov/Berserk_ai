@@ -26,15 +26,15 @@ class Retriever:
         )
         self.dense_embedder = TextEmbedding(
             model_name=self.settings.models.dense,
-            cache_dir=str(MODELS_DIR),
+            cache_dir=str(MODELS_DIR / self.settings.models.dense),
         )
         self.sparse_embedder = SparseTextEmbedding(
             model_name=self.settings.models.sparse,
-            cache_dir=str(MODELS_DIR),
+            cache_dir=str(MODELS_DIR / self.settings.models.sparse),
         )
         self.reranker = TextCrossEncoder(
             model_name=self.settings.models.rerank,
-            cache_dir=str(MODELS_DIR),
+            cache_dir=str(MODELS_DIR / self.settings.models.rerank),
         )
         self.router = None
         self.collection_names = self.settings.qdrant.collections
