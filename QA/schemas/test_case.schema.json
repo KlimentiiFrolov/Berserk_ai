@@ -71,8 +71,12 @@
       "minLength": 1
     },
     "expected_facts": {
-      "type": "string",
-      "minLength": 1
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "forbidden_claims": {
       "type": "string"
@@ -91,8 +95,13 @@
       "type": "string"
     },
     "expected_source_ids": {
-      "type": "string",
-      "minLength": 1
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "citation_required": {
       "type": "string",

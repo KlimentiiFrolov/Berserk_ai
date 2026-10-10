@@ -37,6 +37,8 @@ REQUIRED = {
     "status",
 }
 
+LIST_FIELDS = ("expected_facts", "expected_source_ids")
+
 
 def load_jsonl(path):
     rows = []
@@ -84,17 +86,39 @@ def validate_required_fields(rows):
     return errors
 
 
+def validate_list_fields(rows):
+    errors = []
+
+    for row in rows:
+        test_id = row.get("test_id", "<missing>")
+
+        for field in LIST_FIELDS:
+            value = row.get(field)
+
+            if not isinstance(value, list):
+                errors.append(f"{test_id}: {field} must be a list")
+                continue
+
+            if not value:
+                errors.append(f"{test_id}: {field} must not be empty")
+                continue
+
+            if not all(isinstance(item, str) and item.strip() for item in value):
+                errors.append(
+                    f"{test_id}: {field} must contain non-empty strings only"
+                )
+
+    return errors
+
+
 def validate_source_ids(rows, source_ids):
     errors = []
 
     for row in rows:
         test_id = row.get("test_id", "<missing>")
-        expected_source_ids = row.get("expected_source_ids", "")
 
-        for source_id in expected_source_ids.split(";"):
-            source_id = source_id.strip()
-
-            if source_id and source_id not in source_ids:
+        for source_id in row.get("expected_source_ids", []):
+            if source_id not in source_ids:
                 errors.append(
                     f"{test_id}: unknown source id {source_id}"
                 )
@@ -149,6 +173,7 @@ def validate_dataset(rows, source_ids):
 
     errors.extend(validate_duplicate_ids(rows))
     errors.extend(validate_required_fields(rows))
+    errors.extend(validate_list_fields(rows))
     errors.extend(validate_source_ids(rows, source_ids))
     errors.extend(validate_temporal_tests(rows))
     errors.extend(validate_category_files(rows))
