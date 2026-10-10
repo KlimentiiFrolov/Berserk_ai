@@ -6,7 +6,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.methods import AnswerCallbackQuery, SendChatAction, SendMessage
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
 
-from bot.handlers import create_router
+from bot import routing
+from bot.routing import create_router
 from core.config import BotSettings, Settings, get_settings
 from rag.llm import LLMTimeoutError, LLMUnavailableError
 from rag.schemas import Answer, AnswerGuardState
@@ -28,6 +29,25 @@ def environment(monkeypatch):
     dispatcher = Dispatcher()
     dispatcher.include_router(create_router())
     return bot, dispatcher, request, answer
+
+
+async def test_registry_adds_command_to_routing_and_menu(environment, monkeypatch):
+    async def ping(message):
+        await message.answer("pong")
+
+    monkeypatch.setattr(
+        routing, "COMMANDS", (*routing.COMMANDS, routing.CommandSpec("ping", "Проверка", ping))
+    )
+    bot, _, request, answer = environment
+    dispatcher = Dispatcher()
+    dispatcher.include_router(create_router())
+    calls = await dispatch((bot, dispatcher, request, answer), "/ping")
+    assert any(isinstance(call, SendMessage) and call.text == "pong" for call in calls)
+    assert any(
+        command.command == "ping" and command.description == "Проверка"
+        for command in routing.get_bot_commands()
+    )
+    answer.assert_not_awaited()
 
 
 async def dispatch(environment, text=None):

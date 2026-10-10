@@ -1,12 +1,10 @@
-import logging
-
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand
 from aiogram.utils.token import TokenValidationError, validate_token
 
 import rag
-from bot.handlers import create_router
+from bot.routing import create_router, get_bot_commands
 from core.config import get_settings
+from core.logger import prepare_logger
 
 
 async def main() -> None:
@@ -17,11 +15,7 @@ async def main() -> None:
     except TokenValidationError:
         raise SystemExit("Укажи корректный BOT__TOKEN в .env (токен от @BotFather).") from None
 
-    logging.basicConfig(
-        level=settings.log.level,
-        format=settings.log.format,
-        datefmt=settings.log.datefmt,
-    )
+    prepare_logger("aiogram", settings.log)
     bot = Bot(token=token)
     dispatcher = Dispatcher()
     dispatcher.include_router(create_router())
@@ -29,12 +23,7 @@ async def main() -> None:
         # Проверить доступ к Telegram до загрузки тяжёлых моделей.
         await bot.get_me()
         await rag.init(settings)
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start", description="Начать"),
-                BotCommand(command="help", description="Помощь"),
-            ]
-        )
+        await bot.set_my_commands(get_bot_commands())
         await bot.delete_webhook(drop_pending_updates=False)
         await dispatcher.start_polling(
             bot,
