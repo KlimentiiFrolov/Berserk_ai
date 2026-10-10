@@ -3,6 +3,7 @@ import json
 import sys
 from collections import Counter
 
+
 ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "datasets" / "gold"
 SOURCES = ROOT / "sources" / "official_sources.json"
@@ -17,67 +18,168 @@ CATEGORY_FILES = {
 }
 
 REQUIRED = {
-    "test_id","dataset_version","split","category","subcategory","difficulty",
-    "priority","question","expected_answer","expected_facts","answerability",
-    "intent","retrieval_target","expected_source_ids","citation_required",
-    "temporal","status"
+    "test_id",
+    "dataset_version",
+    "split",
+    "category",
+    "subcategory",
+    "difficulty",
+    "priority",
+    "question",
+    "expected_answer",
+    "expected_facts",
+    "answerability",
+    "intent",
+    "retrieval_target",
+    "expected_source_ids",
+    "citation_required",
+    "temporal",
+    "status",
 }
+
 
 def load_jsonl(path):
     rows = []
-    with path.open("r", encoding="utf-8") as f:
-        for n, line in enumerate(f, 1):
+
+    with path.open("r", encoding="utf-8") as file:
+        for line_number, line in enumerate(file, 1):
             if not line.strip():
                 continue
+
             try:
                 rows.append(json.loads(line))
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"{path}:{n}: invalid JSON: {e}")
+            except json.JSONDecodeError as error:
+                raise RuntimeError(
+                    f"{path}:{line_number}: invalid JSON: {error}"
+                ) from error
+
     return rows
 
-def main():
+
+def load_source_ids(path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {source["source_id"] for source in data["sources"]}
+
+
+def validate_duplicate_ids(rows):
+    ids = [row.get("test_id") for row in rows]
+
+    return [
+        f"Duplicate test_id: {test_id}"
+        for test_id, count in Counter(ids).items()
+        if count > 1
+    ]
+
+
+def validate_required_fields(rows):
     errors = []
-    rows = load_jsonl(GOLD / "all.jsonl")
-    src = json.loads(SOURCES.read_text(encoding="utf-8"))
-    source_ids = {x["source_id"] for x in src["sources"]}
 
-    ids = [r.get("test_id") for r in rows]
-    duplicates = [x for x, c in Counter(ids).items() if c > 1]
-    if duplicates:
-        errors.append(f"Duplicate test_id: {duplicates}")
+    for row in rows:
+        test_id = row.get("test_id", "<missing>")
+        missing = sorted(REQUIRED - set(row))
 
-    for r in rows:
-        tid = r.get("test_id", "<missing>")
-        missing = sorted(REQUIRED - set(r))
         if missing:
-            errors.append(f"{tid}: missing fields {missing}")
+            errors.append(f"{test_id}: missing fields {missing}")
 
-        for sid in [x.strip() for x in r.get("expected_source_ids", "").split(";") if x.strip()]:
-            if sid not in source_ids:
-                errors.append(f"{tid}: unknown source id {sid}")
+    return errors
 
-        if r.get("temporal") == "Да" and not r.get("snapshot_date"):
-            errors.append(f"{tid}: temporal test without snapshot_date")
 
-    all_by_category = {}
-    for r in rows:
-        all_by_category.setdefault(r["category"], []).append(r["test_id"])
+def validate_source_ids(rows, source_ids):
+    errors = []
+
+    for row in rows:
+        test_id = row.get("test_id", "<missing>")
+        expected_source_ids = row.get("expected_source_ids", "")
+
+        for source_id in expected_source_ids.split(";"):
+            source_id = source_id.strip()
+
+            if source_id and source_id not in source_ids:
+                errors.append(
+                    f"{test_id}: unknown source id {source_id}"
+                )
+
+    return errors
+
+
+def validate_temporal_tests(rows):
+    errors = []
+
+    for row in rows:
+        test_id = row.get("test_id", "<missing>")
+
+        if row.get("temporal") == "Да" and not row.get("snapshot_date"):
+            errors.append(
+                f"{test_id}: temporal test without snapshot_date"
+            )
+
+    return errors
+
+
+def group_ids_by_category(rows):
+    grouped = {}
+
+    for row in rows:
+        category = row["category"]
+        grouped.setdefault(category, []).append(row["test_id"])
+
+    return grouped
+
+
+def validate_category_files(rows):
+    errors = []
+    expected_by_category = group_ids_by_category(rows)
 
     for category, filename in CATEGORY_FILES.items():
         split_rows = load_jsonl(GOLD / filename)
-        split_ids = [r["test_id"] for r in split_rows]
-        expected_ids = all_by_category.get(category, [])
+        split_ids = [row["test_id"] for row in split_rows]
+        expected_ids = expected_by_category.get(category, [])
+
         if split_ids != expected_ids:
-            errors.append(f"{filename}: does not match all.jsonl for category {category}")
+            errors.append(
+                f"{filename}: does not match all.jsonl "
+                f"for category {category}"
+            )
+
+    return errors
+
+
+def validate_dataset(rows, source_ids):
+    errors = []
+
+    errors.extend(validate_duplicate_ids(rows))
+    errors.extend(validate_required_fields(rows))
+    errors.extend(validate_source_ids(rows, source_ids))
+    errors.extend(validate_temporal_tests(rows))
+    errors.extend(validate_category_files(rows))
+
+    return errors
+
+
+def print_validation_errors(errors):
+    print("VALIDATION FAILED")
+
+    for error in errors:
+        print(f"- {error}")
+
+
+def main():
+    rows = load_jsonl(GOLD / "all.jsonl")
+    source_ids = load_source_ids(SOURCES)
+
+    errors = validate_dataset(rows, source_ids)
 
     if errors:
-        print("VALIDATION FAILED")
-        for e in errors:
-            print(f"- {e}")
+        print_validation_errors(errors)
         return 1
 
-    print(f"OK: {len(rows)} tests, {len(source_ids)} sources, {len(CATEGORY_FILES)} category files")
+    print(
+        f"OK: {len(rows)} tests, "
+        f"{len(source_ids)} sources, "
+        f"{len(CATEGORY_FILES)} category files"
+    )
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
