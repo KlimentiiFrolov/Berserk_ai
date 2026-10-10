@@ -26,6 +26,7 @@ class LoggerSettings(BaseModel):
 
 class BotSettings(BaseModel):
     token: SecretStr
+    developers: list[str] = Field(default_factory=list, repr=False)
 
 
 class QdrantSettings(BaseModel):
