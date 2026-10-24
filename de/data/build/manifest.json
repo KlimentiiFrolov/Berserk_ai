@@ -1,0 +1,44 @@
+{
+  "run_at": "2026-10-10T13:48:00+00:00",
+  "package_version": "0.1.0",
+  "python": "3.14.4",
+  "platform": "linux",
+  "inputs": [
+    {
+      "kind": "faq",
+      "set_name": "4. Ложные боги",
+      "gid": "522308198",
+      "path": "/mnt/d/code/github/Berserk_ai/de/data/snapshots/faq_4.csv",
+      "sha256": "c2758847c418f44c3c40689684fdd05c78332922a576106a8743c88a9435d175",
+      "snapshot_date": "2026-10-10"
+    },
+    {
+      "kind": "rules",
+      "version": "8.0-1",
+      "path": "/mnt/d/code/github/Berserk_ai/de/data/snapshots/rules_Rasshirennye_Pravila_KKI_Berserk_8_0_1_ot_04_09_2026.docx",
+      "sha256": "d64b4e217288a18c6b41d5d6c1c835ba4c455fe00272207f7127da4c4bf600de",
+      "snapshot_date": "2026-09-04"
+    }
+  ],
+  "chunks": {
+    "count": 1391,
+    "by_source": {
+      "faq": {
+        "total": 144,
+        "official": 143,
+        "community": 1
+      },
+      "rules": {
+        "total": 1247,
+        "official": 1247,
+        "community": 0
+      }
+    },
+    "chunks_sha256": "7809573f75dc9f9b419677899d7503fb354e3b0d685fd791a4f4c8aa32f8a8c1",
+    "chunks_path": "/mnt/d/code/github/Berserk_ai/de/data/build/chunks.jsonl"
+  },
+  "embedder": null,
+  "collection": null,
+  "points_in_collection": null,
+  "smoke": null
+}

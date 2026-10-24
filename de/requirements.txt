@@ -1,0 +1,6 @@
+pydantic
+python-docx
+qdrant-client
+fastembed
+pytest>=8
+sentence-transformers

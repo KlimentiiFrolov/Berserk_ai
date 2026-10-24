@@ -9,9 +9,13 @@ from google_sheets_normalizer import (
     approval_status, stable_id, release_name_from_faq_sheet,
 )
 from schema import Chunk, ChunkMetadata
-from sentence_transformers import SentenceTransformer
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+
+from fastembed import TextEmbedding, SparseTextEmbedding
+from qdrant_client import QdrantClient, models
+from qdrant_client.models import (
+    Distance, VectorParams, SparseVectorParams, Modifier, PointStruct,
+)
+from config import DENSE_MODEL, DENSE_SIZE, SPARSE_MODEL, COLLECTION_NAME
 
 SHEET_NAME = "4. Ложные боги"
 
@@ -68,6 +72,7 @@ def to_chunk(record: dict) -> Chunk:
     )
 
 
+# --- 1. load + normalize + chunk ---
 faq_source = next(s for s in SOURCES if s.key == "faq")
 metadata = collect_source(faq_source, force=True)
 rows = load_jsonl(Path(metadata["raw"]["rows_jsonl"]["path"]))
@@ -76,31 +81,44 @@ chunks = [to_chunk(r) for r in records]
 print(f"Чанков получено: {len(chunks)}")
 
 
+# --- 2. embedding (dense + sparse) ---
+dense_embedder = TextEmbedding(DENSE_MODEL)
+sparse_embedder = SparseTextEmbedding(SPARSE_MODEL, language="russian")
 
-model = SentenceTransformer("intfloat/multilingual-e5-base")
-vectors = model.encode(
-    [f"passage: {c.text}" for c in chunks],
-    normalize_embeddings=True,
-).tolist()
-print(f"Векторов посчитано: {len(vectors)}, размерность: {len(vectors[0])}")
+texts = [c.text for c in chunks]
+
+dense_vectors = [
+    v.tolist() for v in dense_embedder.embed([f"passage: {t}" for t in texts])
+]
+sparse_vectors = [
+    models.SparseVector(indices=s.indices.tolist(), values=s.values.tolist())
+    for s in sparse_embedder.embed(texts)
+]
+print(f"Dense: {len(dense_vectors)} x {len(dense_vectors[0])}, "
+      f"sparse: {len(sparse_vectors)}")
 
 
-
+# --- 3. upsert в Qdrant ---
 client = QdrantClient(url="http://localhost:6333")
 
 client.recreate_collection(
-    collection_name="berserk_sprint1",
-    vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+    collection_name=COLLECTION_NAME,
+    vectors_config={
+        "dense": VectorParams(size=DENSE_SIZE, distance=Distance.COSINE),
+    },
+    sparse_vectors_config={
+        "sparse": SparseVectorParams(modifier=Modifier.IDF),
+    },
 )
 
 points = [
     PointStruct(
         id=str(uuid.uuid5(uuid.NAMESPACE_URL, c.metadata.chunk_id)),
-        vector=vec,
+        vector={"dense": dv, "sparse": sv},
         payload={**c.metadata.model_dump(), "text": c.text},
     )
-    for c, vec in zip(chunks, vectors)
+    for c, dv, sv in zip(chunks, dense_vectors, sparse_vectors)
 ]
 
-client.upsert(collection_name="berserk_sprint1", points=points)
+client.upsert(collection_name=COLLECTION_NAME, points=points)
 print(f"Записано точек в Qdrant: {len(points)}")
