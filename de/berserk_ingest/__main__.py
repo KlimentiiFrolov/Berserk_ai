@@ -19,20 +19,22 @@ def _add_source_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--rules-docx", type=Path, help="путь к docx правил (по умолчанию data/snapshots/rules*.docx)")
     p.add_argument("--faq-key", action="append", help=f"ключ вкладки FAQ из config ({', '.join(FAQ_SHEETS)}); можно несколько")
     p.add_argument("--faq-csv", type=Path, help="явный путь к CSV-снапшоту вкладки (только для одной вкладки)")
-    p.add_argument("--gid", help="своя вкладка: gid из адресной строки")
-    p.add_argument("--set-name", help="своя вкладка: имя, например '5. Путь хранителей'")
+    p.add_argument("--gid", help="своя вкладка: gid из адресной строки (необязателен, вкладка ищется по --set-name)")
+    p.add_argument("--set-name", help="своя вкладка, которой нет в config: имя точно как в таблице, например '9. Новый выпуск'")
     p.add_argument("--refresh", action="store_true", help="перекачать FAQ из Google Sheets (иначе берётся снапшот)")
     p.add_argument("--symbols-file", type=Path, default=SYMBOLS_FILE)
     p.add_argument("--out", type=Path, default=BUILD_DIR)
 
 
 def _sheets(args) -> list[FaqSheet] | None:
-    if args.gid:
+    if args.gid or args.set_name:
         if not args.set_name:
             raise SystemExit("--gid требует --set-name")
         from .config import FAQ_SPREADSHEET_ID
         key = args.set_name.split(".")[0].strip() or args.gid
-        return [FaqSheet(key, FAQ_SPREADSHEET_ID, args.gid, args.set_name)]
+        return [FaqSheet(key, FAQ_SPREADSHEET_ID, args.gid or "", args.set_name)]
+    if args.faq_csv and not args.faq_key:
+        raise SystemExit(f"--faq-csv относится к одной вкладке: добавьте --faq-key ({', '.join(FAQ_SHEETS)})")
     if args.faq_key:
         unknown = [k for k in args.faq_key if k not in FAQ_SHEETS]
         if unknown:

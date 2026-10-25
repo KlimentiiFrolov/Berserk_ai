@@ -13,7 +13,7 @@ from . import __version__
 from .chunking.faq import chunk_faq
 from .chunking.rules import chunk_rules
 from .config import BUILD_DIR, FAQ_SHEETS, SNAPSHOT_DIR, SYMBOLS_FILE, FaqSheet
-from .loaders.faq_sheets import load_faq_sheet
+from .loaders.faq_sheets import load_faq_sheet, refresh_snapshots, snapshot_csv_path
 from .loaders.rules_docx import load_rules_docx
 from .normalize.faq import normalize_faq
 from .normalize.rules import normalize_rules
@@ -71,8 +71,14 @@ def build(sources: list[str], *, faq_sheets: list[FaqSheet] | None = None, csv_p
     total = BuildResult()
     raw_rules = None
     if "faq" in sources:
-        for sheet in faq_sheets or list(FAQ_SHEETS.values()):
-            part = build_faq(sheet, snapshot_dir=snapshot_dir, csv_path=csv_path, refresh=refresh)
+        if csv_path and not faq_sheets:
+            raise ValueError("csv_path относится к одной вкладке: укажите её явно (faq_sheets=[...] / --faq-key)")
+        sheets = faq_sheets or list(FAQ_SHEETS.values())
+        if not csv_path:   # одна загрузка таблицы на все вкладки, а не по загрузке на каждую
+            refresh_snapshots([s for s in sheets if refresh or not snapshot_csv_path(s, snapshot_dir).exists()],
+                              snapshot_dir)
+        for sheet in sheets:
+            part = build_faq(sheet, snapshot_dir=snapshot_dir, csv_path=csv_path, refresh=False)
             total.chunks += part.chunks
             total.inputs += part.inputs
             total.reports.update(part.reports)

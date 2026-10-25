@@ -1,7 +1,10 @@
-"""Загрузка вкладки FAQ из Google Sheets.
+"""Загрузка вкладок FAQ из Google Sheets.
 
 Правило воспроизводимости: пайплайн читает *снапшот* (CSV + meta.json в data/snapshots).
-К живой таблице он обращается только при первом запуске или с refresh=True.
+К живой таблице он обращается только если снапшота нет или указан refresh.
+
+Скачивается вся таблица одним файлом xlsx и режется на вкладки по именам (gid не нужны),
+каждая вкладка сохраняется отдельным CSV: `faq_<ключ>.csv` + `faq_<ключ>.meta.json`.
 """
 from __future__ import annotations
 
@@ -41,22 +44,75 @@ def _looks_like_html(data: bytes, content_type: str) -> bool:
     return "text/html" in content_type.lower() or prefix.startswith((b"<!doctype html", b"<html"))
 
 
-def fetch_csv(sheet: FaqSheet, *, timeout: int = 120) -> tuple[bytes, str]:
-    """Скачивает CSV вкладки. Возвращает (байты, использованный URL)."""
-    errors: list[str] = []
-    for url in (sheet.csv_url, sheet.gviz_csv_url):
-        try:
-            req = Request(url, headers={"User-Agent": "Mozilla/5.0 BerserkIngest/0.1", "Accept": "*/*"})
-            with urlopen(req, timeout=timeout) as resp:
-                data = resp.read()
-                ctype = resp.headers.get("content-type", "")
-            if _looks_like_html(data, ctype):
-                errors.append(f"{url}: вместо CSV пришёл HTML (нет публичного доступа?)")
-                continue
-            return data, url
-        except (HTTPError, URLError, TimeoutError) as exc:
-            errors.append(f"{url}: {type(exc).__name__}: {exc}")
-    raise RuntimeError("Не удалось скачать CSV вкладки:\n" + "\n".join(errors))
+def fetch_workbook(sheet: FaqSheet, *, timeout: int = 180) -> bytes:
+    """Скачивает всю таблицу как xlsx (нужен публичный доступ по ссылке)."""
+    req = Request(sheet.xlsx_url, headers={"User-Agent": "Mozilla/5.0 BerserkIngest/0.1", "Accept": "*/*"})
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            data = resp.read()
+            ctype = resp.headers.get("content-type", "")
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise RuntimeError(f"Не удалось скачать таблицу {sheet.xlsx_url}: {type(exc).__name__}: {exc}") from exc
+    if _looks_like_html(data, ctype):
+        raise RuntimeError(f"{sheet.xlsx_url}: вместо xlsx пришёл HTML (нет публичного доступа по ссылке?)")
+    return data
+
+
+def _cell(value) -> str:
+    """Значение ячейки xlsx -> строка так же, как её отдаёт CSV-экспорт Google (чекбокс = TRUE/FALSE)."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return str(value)
+
+
+def workbook_tabs(xlsx: bytes) -> dict[str, list[list[str]]]:
+    """Все вкладки книги: имя -> строки (хвостовые пустые строки отброшены)."""
+    from openpyxl import load_workbook   # ленивый импорт: нужен только для скачивания
+
+    wb = load_workbook(io.BytesIO(xlsx), data_only=True)
+    tabs: dict[str, list[list[str]]] = {}
+    for ws in wb.worksheets:
+        rows = [[_cell(c) for c in r] for r in ws.iter_rows(values_only=True)]
+        while rows and not any(rows[-1]):
+            rows.pop()
+        tabs[ws.title.strip()] = rows
+    return tabs
+
+
+def rows_to_csv(rows: list[list[str]]) -> bytes:
+    buf = io.StringIO(newline="")
+    csv.writer(buf, lineterminator="\n").writerows(rows)
+    return buf.getvalue().encode("utf-8")
+
+
+def refresh_snapshots(sheets: list[FaqSheet], snapshot_dir: Path, *, xlsx: bytes | None = None) -> None:
+    """Одна загрузка таблицы -> снапшоты всех запрошенных вкладок. xlsx можно передать готовый (для тестов)."""
+    if not sheets:
+        return
+    print(f"[faq] скачиваю таблицу целиком для вкладок: {', '.join(s.set_name for s in sheets)} ...")
+    data = xlsx if xlsx is not None else fetch_workbook(sheets[0])
+    tabs = workbook_tabs(data)
+    missing = [s.set_name for s in sheets if s.set_name not in tabs]
+    if missing:
+        raise RuntimeError(f"В таблице нет вкладок {missing}. Есть: {list(tabs)}")
+
+    fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    workbook_sha = hashlib.sha256(data).hexdigest()
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    for sheet in sheets:
+        body = rows_to_csv(tabs[sheet.set_name])
+        path = snapshot_csv_path(sheet, snapshot_dir)
+        path.write_bytes(body)
+        _meta_path(path).write_text(json.dumps({
+            "source_url": sheet.edit_url, "set_name": sheet.set_name, "format": "xlsx-export",
+            "fetched_at": fetched_at, "sha256": hashlib.sha256(body).hexdigest(), "workbook_sha256": workbook_sha,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def parse_csv(text: str) -> list[list[str]]:
@@ -76,28 +132,22 @@ def load_faq_sheet(
 ) -> RawFaqSheet:
     path = Path(csv_path) if csv_path else snapshot_csv_path(sheet, snapshot_dir)
     meta_file = _meta_path(path)
-    fetched_at: str | None = None
 
     if refresh or not path.exists():
-        if csv_path and not path.exists():
-            raise FileNotFoundError(f"Снапшот не найден: {path}")
-        print(f"[faq] скачиваю вкладку {sheet.set_name!r} (gid={sheet.gid}) ...")
-        data, used_url = fetch_csv(sheet)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-        fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        meta_file.write_text(json.dumps({
-            "source_url": sheet.edit_url, "effective_url": used_url, "set_name": sheet.set_name,
-            "fetched_at": fetched_at, "sha256": hashlib.sha256(data).hexdigest(),
-        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        if csv_path:
+            if not path.exists():
+                raise FileNotFoundError(f"Снапшот не найден: {path}")
+        else:   # для нескольких вкладок сразу используйте refresh_snapshots (одна загрузка на всех)
+            refresh_snapshots([sheet], snapshot_dir)
 
     data = path.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
 
+    fetched_at: str | None = None
     snapshot_date = None
     if meta_file.exists():
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
-        fetched_at = fetched_at or meta.get("fetched_at")
+        fetched_at = meta.get("fetched_at")
         if fetched_at:
             snapshot_date = fetched_at[:10]
     if snapshot_date is None:

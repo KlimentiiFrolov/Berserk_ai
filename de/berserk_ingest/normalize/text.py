@@ -9,7 +9,7 @@ from typing import Any
 def clean_text(value: Any) -> str | None:
     if value is None:
         return None
-    text = str(value)
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")   # Google CSV отдаёт \r\n внутри ячеек
     text = re.sub(r"_x000[0-9A-Fa-f]_", " ", text)   # управляющие символы из Excel
     text = text.replace(" ", " ").replace("​", "")
     text = re.sub(r"[ \t]+", " ", text)
