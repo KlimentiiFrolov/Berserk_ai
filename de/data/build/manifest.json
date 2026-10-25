@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-10-10T13:48:00+00:00",
+  "run_at": "2026-10-25T10:54:33+00:00",
   "package_version": "0.1.0",
   "python": "3.14.4",
   "platform": "linux",
@@ -9,7 +9,7 @@
       "set_name": "4. Ложные боги",
       "gid": "522308198",
       "path": "/mnt/d/code/github/Berserk_ai/de/data/snapshots/faq_4.csv",
-      "sha256": "c2758847c418f44c3c40689684fdd05c78332922a576106a8743c88a9435d175",
+      "sha256": "523d103b9794e6ad9487e5899b33519e24aa898a4ee7d353bfb3047dd5520ad3",
       "snapshot_date": "2026-10-10"
     },
     {
@@ -34,11 +34,95 @@
         "community": 0
       }
     },
-    "chunks_sha256": "7809573f75dc9f9b419677899d7503fb354e3b0d685fd791a4f4c8aa32f8a8c1",
+    "chunks_sha256": "3c2c85d4529036e3a465d38f48de05a05def202b919021784d5ee41cf3dc5d1a",
     "chunks_path": "/mnt/d/code/github/Berserk_ai/de/data/build/chunks.jsonl"
   },
-  "embedder": null,
-  "collection": null,
-  "points_in_collection": null,
-  "smoke": null
+  "embedder": {
+    "name": "intfloat/multilingual-e5-large+Qdrant/bm25",
+    "dense_model": "intfloat/multilingual-e5-large",
+    "dense_dim": 1024,
+    "sparse_model": "Qdrant/bm25",
+    "sparse_language": "russian",
+    "libs": {
+      "fastembed": "0.9.0",
+      "sentence-transformers": "6.1.0",
+      "qdrant-client": "1.19.1"
+    }
+  },
+  "collection": "berserk_intfloat_multilingual_e5_large_qdrant_bm25",
+  "points_in_collection": 1391,
+  "smoke": [
+    {
+      "query": "Нужно ли показывать Мираж при наборе отряда?",
+      "expect": {
+        "card_name": "Мираж"
+      },
+      "ok": true,
+      "top": [
+        {
+          "score": 1.0,
+          "card_name": "Мираж",
+          "section_id": null
+        },
+        {
+          "score": 0.6666667,
+          "card_name": "Мираж",
+          "section_id": null
+        },
+        {
+          "score": 0.375,
+          "card_name": "Отец-дознаватель",
+          "section_id": null
+        }
+      ]
+    },
+    {
+      "query": "Могут ли два Стражника Тугарда поменяться местами дважды?",
+      "expect": {
+        "card_name": "Стражник Тугарда"
+      },
+      "ok": true,
+      "top": [
+        {
+          "score": 1.0,
+          "card_name": "Стражник Тугарда",
+          "section_id": null
+        },
+        {
+          "score": 0.6666667,
+          "card_name": "Стражник Тугарда",
+          "section_id": null
+        },
+        {
+          "score": 0.45,
+          "card_name": "Трактирный забияка",
+          "section_id": null
+        }
+      ]
+    },
+    {
+      "query": "Когда определяется значение Х, если стоимость карты имеет переменную величину?",
+      "expect": {
+        "section_id": "105.2.3"
+      },
+      "ok": true,
+      "top": [
+        {
+          "score": 0.8333334,
+          "card_name": null,
+          "section_id": "105.2.3"
+        },
+        {
+          "score": 0.5769231,
+          "card_name": null,
+          "section_id": "543.2"
+        },
+        {
+          "score": 0.45,
+          "card_name": null,
+          "section_id": "543.1"
+        }
+      ]
+    }
+  ]
 }

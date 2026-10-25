@@ -35,12 +35,28 @@ class SparseBackend(Protocol):
     def embed_query(self, text: str) -> SparseVec: ...
 
 
+def _auto_prefix(model_name: str, kind: str) -> str:
+    """Префиксы нужны только семейству e5; для остальных моделей (bge, jina, ...) пустая строка."""
+    if "e5" in model_name.lower():
+        return {"passage": "passage: ", "query": "query: "}[kind]
+    return ""
+
+
+def _to_list(vec) -> list[float]:
+    return vec.tolist() if hasattr(vec, "tolist") else [float(x) for x in vec]
+
+
+def _to_sparse(s) -> SparseVec:
+    return [int(i) for i in s.indices], [float(v) for v in s.values]
+
+
 class FastEmbedDense:
-    def __init__(self, model_name: str, passage_prefix: str = "passage: ", query_prefix: str = "query: "):
+    def __init__(self, model_name: str, passage_prefix: str | None = None, query_prefix: str | None = None):
         from fastembed import TextEmbedding
 
         self.name = model_name
-        self.passage_prefix, self.query_prefix = passage_prefix, query_prefix
+        self.passage_prefix = _auto_prefix(model_name, "passage") if passage_prefix is None else passage_prefix
+        self.query_prefix = _auto_prefix(model_name, "query") if query_prefix is None else query_prefix
         self._model = TextEmbedding(model_name)
         self.dim = len(next(iter(self._model.embed(["probe"]))))
 
@@ -93,6 +109,46 @@ class FastEmbedBM25:
         return self._conv(next(iter(self._model.query_embed(text))))
 
 
+# ---------- адаптеры для «любой модели с интерфейсом FastEmbed» ----------
+class FastEmbedLikeDense:
+    """Оборачивает готовый объект с методом `.embed(texts) -> Iterable[array]` (fastembed.TextEmbedding и аналоги).
+
+    Префиксы e5 подставляются автоматически по имени модели (`model_name`); задать вручную:
+    passage_prefix="..." / query_prefix="..." (пустая строка = без префикса).
+    """
+
+    def __init__(self, model, *, name: str | None = None,
+                 passage_prefix: str | None = None, query_prefix: str | None = None):
+        self._model = model
+        self.name = name or getattr(model, "model_name", None) or type(model).__name__
+        self.passage_prefix = _auto_prefix(self.name, "passage") if passage_prefix is None else passage_prefix
+        self.query_prefix = _auto_prefix(self.name, "query") if query_prefix is None else query_prefix
+        self.dim = len(_to_list(next(iter(model.embed(["probe"])))))
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        return [_to_list(v) for v in self._model.embed([self.passage_prefix + t for t in texts])]
+
+    def embed_query(self, text: str) -> list[float]:
+        return _to_list(next(iter(self._model.embed([self.query_prefix + text]))))
+
+
+class FastEmbedLikeSparse:
+    """Оборачивает объект с `.embed(texts)`, элементы которого имеют `.indices` и `.values`
+    (fastembed.SparseTextEmbedding). Для запросов берётся `query_embed`, если он есть (у BM25 он нужен)."""
+
+    def __init__(self, model, *, name: str | None = None):
+        self._model = model
+        self.name = name or getattr(model, "model_name", None) or type(model).__name__
+
+    def embed_passages(self, texts: list[str]) -> list[SparseVec]:
+        return [_to_sparse(s) for s in self._model.embed(texts)]
+
+    def embed_query(self, text: str) -> SparseVec:
+        query_embed = getattr(self._model, "query_embed", None)
+        out = query_embed(text) if query_embed else self._model.embed([text])
+        return _to_sparse(next(iter(out)))
+
+
 @dataclass
 class Embedder:
     dense: DenseBackend
@@ -123,6 +179,33 @@ class Embedder:
             "sparse_language": getattr(self.sparse, "language", None) if self.sparse else None,
             "libs": {p: _version(p) for p in ("fastembed", "sentence-transformers", "qdrant-client")},
         }
+
+
+def wrap_fastembed(dense, sparse=None, *, passage_prefix: str | None = None,
+                   query_prefix: str | None = None) -> Embedder:
+    """Собрать Embedder из готовых моделей FastEmbed: wrap_fastembed(TextEmbedding(...), SparseTextEmbedding(...))."""
+    return Embedder(
+        FastEmbedLikeDense(dense, passage_prefix=passage_prefix, query_prefix=query_prefix),
+        FastEmbedLikeSparse(sparse) if sparse is not None else None,
+    )
+
+
+def as_embedder(embedder, sparse_embedder=None):
+    """Единая точка входа для Indexer: принимает готовый Embedder (embed_passages/embed_query)
+    ИЛИ модель с интерфейсом FastEmbed (`.embed`), к которой можно добавить sparse_embedder."""
+    if hasattr(embedder, "embed_passages"):
+        if sparse_embedder is not None:
+            raise ValueError("sparse_embedder нельзя передавать вместе с готовым Embedder: он уже содержит sparse-часть")
+        return embedder
+    if not hasattr(embedder, "embed"):
+        raise TypeError(f"{type(embedder).__name__}: ожидается объект с методом .embed(texts) (интерфейс FastEmbed) "
+                        "или Embedder из berserk_ingest.embedders")
+    return wrap_fastembed(embedder, sparse_embedder)
+
+
+def custom_embedder(dense_model: str, sparse_model: str | None = "Qdrant/bm25") -> Embedder:
+    """Эмбеддер по именам моделей FastEmbed, без правки PRESETS (для CLI --dense-model/--sparse-model)."""
+    return Embedder(FastEmbedDense(dense_model), FastEmbedBM25(sparse_model) if sparse_model else None)
 
 
 # Новый эмбеддер = новая строка здесь (или свой класс DenseBackend/SparseBackend).

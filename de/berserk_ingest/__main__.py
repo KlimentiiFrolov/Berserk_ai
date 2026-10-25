@@ -79,8 +79,15 @@ def _client(args):
     return QdrantClient(url=args.qdrant_url)
 
 
+def _embedder(args):
+    """--dense-model задаёт модели FastEmbed по имени; иначе берётся пресет --embedder."""
+    from .embedders import custom_embedder, get_embedder
+    if args.dense_model:
+        return custom_embedder(args.dense_model, None if args.no_sparse else args.sparse_model)
+    return get_embedder(args.embedder)
+
+
 def cmd_reindex(args) -> int:
-    from .embedders import get_embedder
     from .indexer import Indexer
     result, _ = build(_sources(args), faq_sheets=_sheets(args), csv_path=args.faq_csv, rules_docx=args.rules_docx,
                       snapshot_dir=args.snapshot_dir, refresh=args.refresh, symbols_file=args.symbols_file)
@@ -89,7 +96,7 @@ def cmd_reindex(args) -> int:
     present = {c.metadata.source_type for c in result.chunks}
     smoke_queries = [q for q in smoke_queries if q.get("source_type") in present]
 
-    embedder = get_embedder(args.embedder)
+    embedder = _embedder(args)
     summary = reindex(result, indexer=Indexer(_client(args)), embedder=embedder,
                       collection=args.collection or DEFAULT_COLLECTION or None,
                       recreate=not args.no_recreate, out_dir=args.out, smoke_queries=smoke_queries)
@@ -105,9 +112,8 @@ def cmd_reindex(args) -> int:
 
 
 def cmd_search(args) -> int:
-    from .embedders import get_embedder
     from .indexer import Indexer, default_collection_name
-    embedder = get_embedder(args.embedder)
+    embedder = _embedder(args)
     name = args.collection or DEFAULT_COLLECTION or default_collection_name(embedder)
     hits = Indexer(_client(args)).search(name, embedder, args.query, limit=args.limit, mode=args.mode,
                                          source_type=args.source_type, priority=args.priority)
@@ -136,7 +142,10 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_chunks)
 
     def qdrant_args(p):
-        p.add_argument("--embedder", default=DEFAULT_EMBEDDER)
+        p.add_argument("--embedder", default=DEFAULT_EMBEDDER, help="пресет из embedders.PRESETS")
+        p.add_argument("--dense-model", help="имя dense-модели FastEmbed (вместо пресета), напр. intfloat/multilingual-e5-large")
+        p.add_argument("--sparse-model", default="Qdrant/bm25", help="sparse-модель к --dense-model (по умолчанию Qdrant/bm25)")
+        p.add_argument("--no-sparse", action="store_true", help="с --dense-model: только dense, без BM25")
         p.add_argument("--collection")
         p.add_argument("--qdrant-url", default=QDRANT_URL)
         p.add_argument("--local", help="встроенный Qdrant без сервера: ':memory:' или путь к папке")

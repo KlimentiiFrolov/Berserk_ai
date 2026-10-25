@@ -1,15 +1,20 @@
 """Индексатор Qdrant: коллекция «dense (+ sparse BM25)», идемпотентная заливка, поиск.
 
-Использование:
-    indexer = Indexer(QdrantClient(url=...))
-    indexer.load_data(chunks, embedder=get_embedder("e5-large-bm25"))
+Использование (embedder — любая модель с интерфейсом FastEmbed `.embed(texts)`):
+    from fastembed import TextEmbedding, SparseTextEmbedding
+    loader = Loader()                                   # QdrantClient(url=QDRANT_URL)
+    loader.load_data(chunks,
+                     embedder=TextEmbedding("intfloat/multilingual-e5-large"),
+                     sparse_embedder=SparseTextEmbedding("Qdrant/bm25", language="russian"))
+Без sparse_embedder коллекция будет только dense. Готовый Embedder из embedders.py тоже подходит:
+    loader.load_data(chunks, embedder=get_embedder("e5-large-bm25"))
 """
 from __future__ import annotations
 
 import re
 from typing import Sequence
 
-from .embedders import Embedder
+from .embedders import Embedder, as_embedder
 from .schema import Chunk, point_id
 
 DENSE = "dense"      # имена именованных векторов: на них опирается retrieval (Prefetch using=...)
@@ -28,7 +33,11 @@ def _models():
 
 
 class Indexer:
-    def __init__(self, client):
+    def __init__(self, client=None, *, url: str | None = None):
+        if client is None:
+            from qdrant_client import QdrantClient
+            from .config import QDRANT_URL
+            client = QdrantClient(url=url or QDRANT_URL)
         self.client = client
 
     # ---------- коллекция ----------
@@ -79,19 +88,25 @@ class Indexer:
     def load_data(
         self,
         chunks: list[Chunk],
-        embedder: Embedder,
+        embedder,
         collection_name: str | None = None,
         *,
+        sparse_embedder=None,
         recreate: bool = True,
         batch_size: int = 32,
     ) -> str:
         """Эмбеддит чанки и заливает в коллекцию; возвращает её имя.
+
+        embedder — модель с интерфейсом FastEmbed (`.embed`) или готовый Embedder; sparse_embedder — опциональная
+        sparse-модель (BM25). Имя коллекции по умолчанию строится из имён моделей, поэтому разные
+        модели не перетирают друг друга.
 
         recreate=True  — коллекция создаётся заново (воспроизводимый прогон на тестовом наборе);
         recreate=False — «синхронизация»: старые точки тех же doc_id удаляются, затем заливаются новые,
                          поэтому правка/удаление строки в источнике не оставляет в базе устаревших чанков.
         """
         m = _models()
+        embedder = as_embedder(embedder, sparse_embedder)
         name = collection_name or default_collection_name(embedder)
         self.ensure_collection(name, embedder, recreate=recreate)
         if not recreate and chunks:
@@ -115,15 +130,17 @@ class Indexer:
     def search(
         self,
         name: str,
-        embedder: Embedder,
+        embedder,
         query: str,
         *,
+        sparse_embedder=None,
         limit: int = 5,
         mode: str = "hybrid",
         source_type: str | None = None,
         priority: str | None = None,
     ) -> list[dict]:
         m = _models()
+        embedder = as_embedder(embedder, sparse_embedder)
         conds = []
         if source_type:
             conds.append(m.FieldCondition(key="source_type", match=m.MatchValue(value=source_type)))
