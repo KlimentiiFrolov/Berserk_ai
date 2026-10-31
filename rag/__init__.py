@@ -7,15 +7,18 @@ import asyncio
 from core.config import Settings, get_settings
 from core.logger import prepare_logger
 from rag.llm import LLMClient, Message, create_llm
-from rag.schemas import Answer, AnswerGuardState
+from rag.schemas import Answer, AnswerGuardState, RetrievedChunk
+from rag.answer_builder import sources_from_chunks
 
 logger = prepare_logger(__name__, get_settings().log)
 
 REFUSAL_TEXT = "Не удалось найти в базе знаний информацию по вашему вопросу."
+WARNING_PREFIX = "В базе знаний найден слабый или неполный контекст; проверьте ответ по источнику."
 
 _settings: Settings | None = None
 _retriever = None
 _llm: LLMClient | None = None
+
 
 # TODO: вызывается ОДИН раз при старте бота
 async def init(settings: Settings | None = None) -> None:
@@ -39,14 +42,20 @@ async def answer(question: str, history: list[Message] | None = None) -> Answer:
         dense_chunks_limit=rs.dense_limit,
         sparse_chunks_limit=rs.sparse_limit,
         rrf_limit=rs.rrf_limit,
+        rerank_limit=rs.rerank_limit,
         use_reranker=rs.use_reranker,
     )
     collections = sorted({c.chunk.collection for c in chunks})
     logger.info("rag: найдено чанков=%d collections=%s", len(chunks), collections)
 
-    # TODO answer_guard: пороги OK / WARN / REFUSE и источники
-    if not chunks:
+    if not chunks or chunks[0].score < _settings.guard.refuse_threshold:
         return Answer(REFUSAL_TEXT, AnswerGuardState.REFUSE)
+
+    guard_state = (
+        AnswerGuardState.WARN
+        if chunks[0].score < _settings.guard.warn_threshold
+        else AnswerGuardState.OK
+    )
 
     # TODO context_builder: промпт из чанков
     context = "\n\n".join(f"[{i}] {c.chunk.text}" for i, c in enumerate(chunks, start=1))
@@ -56,10 +65,14 @@ async def answer(question: str, history: list[Message] | None = None) -> Answer:
         Message("user", f"Контекст:\n{context}\n\nВопрос: {question}"),
     ]
     response = await _llm.generate(messages)
-
+    sources = sources_from_chunks(chunks)
+    answer_text = response.text
+    if guard_state is AnswerGuardState.WARN:
+        answer_text = f"{WARNING_PREFIX}\n\n{answer_text}"
     return Answer(
-        text=response.text,
-        guard_state=AnswerGuardState.OK,
+        text=answer_text,
+        guard_state=guard_state,
+        sources=sources,
         routed_collections=collections,
         chunks=chunks,
     )

@@ -226,5 +226,12 @@ CONTEXT.md
 # Артефакты рантайма (создаются RAGSettings.ensure_directories)
 models/
 logs/
-data/
+data/*
 qdrant_store/
+
+*.jsonl
+*.json
+
+# Legacy index-ready inputs used by ingestion and evaluation.
+!data/index_ready/
+!data/index_ready/*.jsonl
