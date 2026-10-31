@@ -26,6 +26,10 @@ class LoggerSettings(BaseModel):
 
 class BotSettings(BaseModel):
     token: SecretStr
+    request_timeout_s: float = Field(default=120, gt=0, allow_inf_nan=False)
+    telegram_timeout_s: float = Field(default=15, gt=0, allow_inf_nan=False)
+    telegram_retry_after_s: float = Field(default=5, ge=0, allow_inf_nan=False)
+    feedback_db_path: Path = DATA_DIR / "feedback.sqlite3"
     developers: list[str] = Field(default_factory=list, repr=False)
     help_text: str = (
         'Отправь текстовый вопрос по ККИ "Берсерк", и я поищу ответ в базе знаний.\n\n'

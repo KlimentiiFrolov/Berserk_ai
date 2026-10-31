@@ -1,6 +1,29 @@
 import pytest
 
-from bot.formatting import split_answer
+from bot.formatting import format_sources, split_answer
+from rag.schemas import Source
+
+
+def test_sources_labels_optional_urls_and_duplicates():
+    official = Source("rules", "official", "Правила: 3.2", "https://example.org/rules")
+    community = Source("community", "community", "Разбор <атаки> & защиты")
+    assert format_sources([official, community, official]) == (
+        "\n\nИсточники:\n"
+        "• Правила: 3.2 (официальный источник)\nhttps://example.org/rules\n"
+        "• Разбор <атаки> & защиты (сообщество)"
+    )
+
+
+def test_no_sources_has_no_heading():
+    assert format_sources([]) == ""
+
+
+def test_sources_with_same_title_but_distinct_urls_are_preserved():
+    sources = [
+        Source("cards", "official", "Карта: Пример", url)
+        for url in ("https://example.org/1", "https://example.org/2")
+    ]
+    assert format_sources(sources).count("• Карта: Пример") == 2
 
 
 @pytest.mark.parametrize(

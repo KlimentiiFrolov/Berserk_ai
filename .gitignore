@@ -228,3 +228,4 @@ models/
 logs/
 data/
 qdrant_store/
+qdrant_storage/

@@ -8,6 +8,7 @@ from qdrant_client import AsyncQdrantClient, models
 
 from core.config import MODELS_DIR, Settings, get_settings
 from core.logger import prepare_logger
+from rag.errors import RetrievalUnavailableError
 from rag.schemas import Chunk, RetrievedChunk
 
 logger = prepare_logger(__name__, get_settings().log)
@@ -68,7 +69,7 @@ class Retriever:
                                    sparse_chunks_limit=sparse_chunks_limit,
                                    rrf_limit=rrf_limit)
         #print("retrieve:chunks:", chunks)
-        if use_reranker:
+        if use_reranker and chunks:
             chunks = await self._rerank(query, chunks)
             
         return chunks[:top_k]
@@ -117,12 +118,18 @@ class Retriever:
             ) for collection_name in collections]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for collection_name, result in zip(collections, results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, Exception):
+                # Не выдаём неполный поиск или отказ как корректный результат.
+                raise RetrievalUnavailableError(
+                    f"Не удалось выполнить поиск в коллекции {collection_name}"
+                ) from result
         
         total_chunks = []
         for collection_name, result in zip(collections, results):
-            if isinstance(result, BaseException):
-                logger.warning("Коллекция %s недоступна: %s", collection_name, result)
-                continue
             
             chunks = [RetrievedChunk(
                         chunk=Chunk(

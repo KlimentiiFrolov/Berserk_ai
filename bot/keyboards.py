@@ -16,11 +16,13 @@ MAIN_MENU = ReplyKeyboardMarkup(
     input_field_placeholder="Задай вопрос по игре «Берсерк»",
 )
 
-ANSWER_FEEDBACK = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="👍", callback_data="feedback:like"),
-            InlineKeyboardButton(text="👎", callback_data="feedback:dislike"),
+
+def answer_feedback_keyboard(answer_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="👍", callback_data=f"feedback:{answer_id}:like"),
+                InlineKeyboardButton(text="👎", callback_data=f"feedback:{answer_id}:dislike"),
+            ]
         ]
-    ],
-)
+    )

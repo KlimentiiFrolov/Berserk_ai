@@ -49,9 +49,7 @@ FALLBACK_HANDLERS = (
     HandlerSpec(handlers.unsupported_message),
 )
 
-CALLBACK_HANDLERS = (
-    HandlerSpec(handlers.feedback_stub, (F.data.in_({"feedback:like", "feedback:dislike"}),)),
-)
+CALLBACK_HANDLERS = (HandlerSpec(handlers.feedback, (F.data.startswith("feedback:"),)),)
 
 
 def get_bot_commands() -> list[BotCommand]:
