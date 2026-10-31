@@ -9,6 +9,8 @@
 - `datasets/robustness/paraphrase_pairs.jsonl` — 10 перефразированных вариантов существующих gold-тестов.
 - `datasets/robustness/false_premise.jsonl` — 8 сценариев с ложной предпосылкой или намеренно неверным фактом.
 - `evaluation/error_taxonomy.json` — единая классификация типов ошибок для будущих прогонов.
+- `docs/QA_COVERAGE_REPORT.md` — анализ текущего QA-покрытия, пробелов и заблокированных проверок.
+- `scripts/validate_robustness.py` — автоматическая структурная проверка robustness dataset.
 
 ## Evaluation focus
 
