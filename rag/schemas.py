@@ -23,6 +23,10 @@ class RetrievedChunk:
     chunk: Chunk
     score: float
     stage: Literal["hybrid_rrf", "reranked"]
+    rrf_score: float | None = None
+    rerank_score: float | None = None
+    dense_score: float | None = None
+    sparse_score: float | None = None
 
 @dataclass
 class Source:
@@ -31,6 +35,8 @@ class Source:
     source_type: Literal["official", "community"]
     title: str # пункт правил / название карты / вопрос FAQ / заголовок статьи
     url: str | None = None
+    source_id: str | None = None
+    chunk_id: str | None = None
 
 @dataclass
 class Answer:

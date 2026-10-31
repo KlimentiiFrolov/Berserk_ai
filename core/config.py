@@ -72,6 +72,7 @@ class RetrievalSettings(BaseModel):
     dense_limit: int = 20
     sparse_limit: int = 20
     rrf_limit: int = 20
+    rerank_limit: int = 20
     use_reranker: bool = True
 
 
