@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Any
 
 from fastembed import SparseTextEmbedding, TextEmbedding
@@ -65,18 +66,35 @@ class Retriever:
                        use_reranker: bool = True) -> list[RetrievedChunk]:
         # точка входа
         collections = collections if collections else await self._extract_collections(query)
+        started_at = time.perf_counter()
         chunks = await self._search(query, 
                                    collections=collections,
                                    dense_chunks_limit=dense_chunks_limit,
                                    sparse_chunks_limit=sparse_chunks_limit,
                                    rrf_limit=rrf_limit)
-        if use_reranker:
-            rerank_count = min(rerank_limit, len(chunks))
-            reranked = await self._rerank(query, chunks[:rerank_count])
-            chunks = reranked + chunks[rerank_count:]
-        else:
-            chunks = sorted(chunks, key=lambda chunk: chunk.score, reverse=True)
+        search_ms = (time.perf_counter() - started_at) * 1000
 
+        rerank_ms = 0.0
+        if use_reranker and rerank_limit > 0:
+            rerank_count = min(rerank_limit, len(chunks))
+            rerank_candidates = chunks[:rerank_count]
+            remaining = chunks[rerank_count:]
+            rerank_started_at = time.perf_counter()
+            reranked = await self._rerank(query, rerank_candidates)
+            rerank_ms = (time.perf_counter() - rerank_started_at) * 1000
+            # RRF-score и rerank-score находятся в разных шкалах. Поэтому
+            # после reranking не сортируем общий список по score повторно.
+            chunks = reranked + remaining
+
+        logger.info(
+            "retrieval: collections=%d candidates=%d reranked=%d "
+            "search_ms=%.1f rerank_ms=%.1f",
+            len(collections),
+            len(chunks),
+            min(rerank_limit, len(chunks)) if use_reranker else 0,
+            search_ms,
+            rerank_ms,
+        )
         return chunks[:top_k]
     
     async def _embed_dense(self, texts) -> list[list]:
@@ -144,15 +162,62 @@ class Retriever:
                     rrf_score=point.score,
                 ))
 
-        return total_chunks
+        # RRF рассчитывается отдельно внутри каждого Qdrant-запроса, поэтому
+        # объединённые результаты нужно отсортировать глобально по score.
+        return sorted(total_chunks, key=lambda chunk: chunk.score, reverse=True)
 
     @staticmethod
     def _chunk_from_point(collection_name: str, point: Any) -> Chunk:
-        payload = point.payload or {}
+        payload = dict(point.payload or {})
+        nested_metadata = payload.get("metadata")
+        nested_metadata = nested_metadata if isinstance(nested_metadata, dict) else {}
+        citation = payload.get("citation")
+        citation = citation if isinstance(citation, dict) else {}
+        provenance = payload.get("provenance")
+        provenance = provenance if isinstance(provenance, dict) else {}
+
+        source_id = str(payload.get("source_id") or point.id)
+        chunk_id = str(payload.get("chunk_id") or source_id)
+        title = str(
+            payload.get("title")
+            or payload.get("section_path")
+            or payload.get("card_name")
+            or payload.get("question")
+            or citation.get("title")
+            or chunk_id
+        )
+        source_type = str(
+            payload.get("source_type")
+            or nested_metadata.get("source_type")
+            or citation.get("source_type")
+            or ""
+        )
+        text = str(
+            payload.get("text")
+            or payload.get("retrieval_text")
+            or payload.get("embedding_text")
+            or payload.get("content")
+            or ""
+        )
+
+        # Фиксируем единый набор полей независимо от версии payload в Qdrant.
+        payload.update({
+            "collection": collection_name,
+            "chunk_id": chunk_id,
+            "source_id": source_id,
+            "title": title,
+            "source_type": source_type,
+            "text": text,
+            "source_url": (
+                payload.get("source_url")
+                or citation.get("url")
+                or provenance.get("url")
+            ),
+        })
         return Chunk(
-            id=str(payload.get("chunk_id") or payload.get("source_id") or point.id),
-            text=str(payload.get("text") or ""),
-            source_type=str(payload.get("source_type") or ""),
+            id=chunk_id,
+            text=text,
+            source_type=source_type,
             collection=collection_name,
             metadata=payload,
         )

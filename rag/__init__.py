@@ -57,8 +57,20 @@ async def answer(question: str, history: list[Message] | None = None) -> Answer:
         else AnswerGuardState.OK
     )
 
-    # TODO context_builder: промпт из чанков
-    context = "\n\n".join(f"[{i}] {c.chunk.text}" for i, c in enumerate(chunks, start=1))
+    context_parts = []
+    for index, retrieved in enumerate(chunks, start=1):
+        chunk = retrieved.chunk
+        metadata = chunk.metadata
+        context_parts.append(
+            f"[{index}] "
+            f"Коллекция: {chunk.collection}\n"
+            f"Тип источника: {chunk.source_type or 'unknown'}\n"
+            f"Название: {metadata.get('title') or '-'}\n"
+            f"source_id: {metadata.get('source_id') or '-'}\n"
+            f"chunk_id: {chunk.id}\n"
+            f"Текст: {chunk.text}"
+        )
+    context = "\n\n".join(context_parts)
     messages = [
         Message("system", _settings.llm.system_prompt),
         *(history or []),

@@ -12,12 +12,29 @@ async def main(question: str) -> None:
     finally:
         await rag.close()
 
-    print(f"\n[{result.guard_state.name}] collections={result.routed_collections}\n")
+    print(f"\nВопрос: {question}")
+    print(f"[{result.guard_state.name}] collections={result.routed_collections}\n")
     print(result.text)
+
     if result.sources:
         print("\nИсточники:")
         for source in result.sources:
-            print(f"  - {source.collection}/{source.title} ({source.source_type})")
+            print(f"  - {source.collection}: {source.title}")
+            print(f"    type={source.source_type} source_id={source.source_id or '-'}")
+            print(f"    chunk_id={source.chunk_id or '-'}")
+            if source.url:
+                print(f"    url={source.url}")
+
+    if result.chunks:
+        print("\nНайденные чанки:")
+        for rank, retrieved in enumerate(result.chunks, start=1):
+            chunk = retrieved.chunk
+            print(
+                f"  {rank}. {chunk.collection}/{chunk.id} "
+                f"score={retrieved.score:.4f} stage={retrieved.stage}"
+            )
+            print(f"     title={chunk.metadata.get('title') or '-'}")
+            print(f"     text={chunk.text or '[пустой текст]'}")
 
 
 if __name__ == "__main__":

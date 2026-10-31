@@ -38,7 +38,7 @@ docker run -d --name berserkai-qdrant -p 6333:6333 qdrant/qdrant
 
 ```bash
 docker run -d --name berserkai-qdrant -p 6333:6333 \
-  -v /путь/к/папке/хранения:/qdrant/storage \
+  -v /mnt/e/SSAU_code/berserk-rag/qdrant_storage:/qdrant/storage \
   qdrant/qdrant
 ```
 

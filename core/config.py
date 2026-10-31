@@ -68,9 +68,9 @@ class ModelsSettings(BaseModel):
 
 
 class RetrievalSettings(BaseModel):
-    top_k: int = 5
-    dense_limit: int = 20
-    sparse_limit: int = 20
+    top_k: int = 15
+    dense_limit: int = 30
+    sparse_limit: int = 30
     rrf_limit: int = 20
     rerank_limit: int = 20
     use_reranker: bool = True
@@ -79,8 +79,8 @@ class RetrievalSettings(BaseModel):
 class GuardSettings(BaseModel):
     # score < refuse_threshold -> отказ без вызова LLM
     # refuse_threshold <= score < warn -> ответ с предупреждением
-    warn_threshold: float = 0.5
-    refuse_threshold: float = 0.1
+    warn_threshold: float = -1000
+    refuse_threshold: float = -1000
 
     @model_validator(mode="after")
     def _check_order(self) -> Self:
