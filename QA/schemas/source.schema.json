@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Berserk AI Official Source",
+  "type": "object",
+  "required": [
+    "source_id",
+    "name",
+    "source_type",
+    "authority_tier",
+    "official",
+    "temporal",
+    "url",
+    "scope"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "authority_tier": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "official": {
+      "type": "string",
+      "enum": [
+        "Да",
+        "Нет"
+      ]
+    },
+    "temporal": {
+      "type": "string",
+      "enum": [
+        "Да",
+        "Нет",
+        "Частично"
+      ]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

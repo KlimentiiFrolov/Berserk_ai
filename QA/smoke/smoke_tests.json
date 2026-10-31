@@ -1,0 +1,125 @@
+{
+  "version": "1.0",
+  "tests": [
+    {
+      "test_id": "SMK-001",
+      "layer": "Backend",
+      "priority": "P0",
+      "check": "Запуск backend-приложения",
+      "preconditions": "Окружение настроено, зависимости установлены",
+      "steps": [
+        "Запустить приложение штатной командой."
+      ],
+      "expected_result": "Процесс стартует без необработанного traceback и остаётся активным.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-002",
+      "layer": "Bot",
+      "priority": "P0",
+      "check": "Запуск Telegram bot polling",
+      "preconditions": "BOT_TOKEN задан, сеть доступна",
+      "steps": [
+        "Запустить Telegram-бота."
+      ],
+      "expected_result": "Бот успешно входит в polling и не завершается с ошибкой.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-003",
+      "layer": "Bot UX",
+      "priority": "P0",
+      "check": "Команда /start",
+      "preconditions": "Бот запущен",
+      "steps": [
+        "Отправить /start."
+      ],
+      "expected_result": "Пользователь получает стартовое сообщение; процесс бота не падает.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-004",
+      "layer": "Bot UX",
+      "priority": "P1",
+      "check": "Команда /help",
+      "preconditions": "Бот запущен",
+      "steps": [
+        "Отправить /help."
+      ],
+      "expected_result": "Пользователь получает краткую справку/подсказку по использованию.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-005",
+      "layer": "Integration",
+      "priority": "P0",
+      "check": "Передача текстового вопроса в backend/RAG",
+      "preconditions": "Bot + backend запущены",
+      "steps": [
+        "Отправить валидный текстовый вопрос по «Берсерку»."
+      ],
+      "expected_result": "Вопрос доходит до rag.answer() или эквивалентной точки вызова.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-006",
+      "layer": "RAG API",
+      "priority": "P0",
+      "check": "Возврат результата rag.answer()",
+      "preconditions": "RAG-функция доступна",
+      "steps": [
+        "Вызвать rag.answer() на простом вопросе."
+      ],
+      "expected_result": "Функция возвращает непустой результат ожидаемого типа, без необработанной ошибки.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-007",
+      "layer": "End-to-end",
+      "priority": "P0",
+      "check": "Ответ возвращается пользователю",
+      "preconditions": "Bot + backend + RAG доступны",
+      "steps": [
+        "Отправить вопрос через Telegram и дождаться результата."
+      ],
+      "expected_result": "Пользователь получает финальный текстовый ответ.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-008",
+      "layer": "Error handling",
+      "priority": "P1",
+      "check": "Пустой/некорректный ввод",
+      "preconditions": "Бот запущен",
+      "steps": [
+        "Отправить пустой/неподдерживаемый тип сообщения или эквивалентный некорректный ввод."
+      ],
+      "expected_result": "Система не падает; пользователь получает корректное сообщение или ввод безопасно игнорируется.",
+      "automation_candidate": false
+    },
+    {
+      "test_id": "SMK-009",
+      "layer": "Error handling",
+      "priority": "P0",
+      "check": "Ошибка RAG/LLM не валит бота",
+      "preconditions": "Есть способ временно смоделировать исключение/недоступность зависимости",
+      "steps": [
+        "Спровоцировать ошибку внутри rag.answer() или зависимого компонента."
+      ],
+      "expected_result": "Ошибка перехватывается; бот продолжает работать и возвращает понятное fallback-сообщение.",
+      "automation_candidate": true
+    },
+    {
+      "test_id": "SMK-010",
+      "layer": "Regression seed",
+      "priority": "P1",
+      "check": "Мини-прогон 5 gold-вопросов",
+      "preconditions": "Основной сценарий работает",
+      "steps": [
+        "Прогнать RUL-001, RUL-004, MEC-006, CAR-001, FAQ-001."
+      ],
+      "expected_result": "Все 5 запросов проходят end-to-end; результаты и источники сохранены для ручной проверки.",
+      "automation_candidate": true
+    }
+  ]
+}

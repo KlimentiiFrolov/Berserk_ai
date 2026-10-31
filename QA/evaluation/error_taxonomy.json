@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "purpose": "Классификация ошибок при будущих smoke/e2e и gold/eval прогонах.",
+  "errors": [
+    {
+      "code": "FACT_MISMATCH",
+      "description": "Ответ противоречит ожидаемому факту или официальному источнику."
+    },
+    {
+      "code": "HALLUCINATION",
+      "description": "Ответ содержит существенное неподтверждённое утверждение."
+    },
+    {
+      "code": "RETRIEVAL_MISS",
+      "description": "Система не нашла релевантный источник при наличии его в корпусе."
+    },
+    {
+      "code": "WRONG_SOURCE",
+      "description": "Ответ опирается на нерелевантный или менее авторитетный источник."
+    },
+    {
+      "code": "INCOMPLETE",
+      "description": "Пропущен один или несколько обязательных expected_facts."
+    },
+    {
+      "code": "FAILED_ABSTENTION",
+      "description": "Система выдумала ответ там, где данных недостаточно."
+    },
+    {
+      "code": "FALSE_PREMISE_ACCEPTED",
+      "description": "Система приняла ошибочную предпосылку пользователя вместо её исправления."
+    },
+    {
+      "code": "PARAPHRASE_INCONSISTENCY",
+      "description": "Семантически эквивалентные вопросы получили противоречивые ответы."
+    },
+    {
+      "code": "INTEGRATION_ERROR",
+      "description": "Тест не дошёл до оценки ответа из-за ошибки backend/bot/RAG-интеграции."
+    }
+  ]
+}
